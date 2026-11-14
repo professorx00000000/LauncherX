@@ -1,74 +1,42 @@
-name: Build Android APK
-on: [push]
+
+name: Build LauncherX Android APK
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
+    name: Build Debug APK
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
         with:
-          java-version: '21'
-          distribution: 'temurin'
+          distribution: temurin
+          java-version: '17'
 
-      - name: Install Dependencies
-        run: npm install --force
-
-      - name: Build Web Project
-        run: |
-          
-          npm run build -- --base=./ || npm run build || true
-          if [ ! -d "dist" ]; then
-            mkdir -p dist
-            cp index.html dist/ 2>/dev/null || true
-          fi
-
-      - name: Setup Capacitor Config
-        run: |
-          npm install @capacitor/core @capacitor/cli @capacitor/android
-          
-          
-          
-          cat <<EOF > capacitor.config.json
-          {
-            "appId": "com.ec.aoo",
-            "appName": "LauncherX",
-            "webDir": "dist",
-            "server": {
-              "androidScheme": "https",
-              "hostname": "localhost",
-              "cleartext": true
-            }
-          }
-          EOF
-          
-          npx cap add android || true
-          npx cap sync android
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
 
       - name: Build Android APK
-        run: |
-          cd android
-          
-          
-          echo "configurations.all {
-              resolutionStrategy.eachDependency { DependencyResolveDetails details ->
-                  if (details.requested.group == 'org.jetbrains.kotlin') {
-                      details.useVersion '1.8.22'
-                  }
-              }
-          }" >> app/build.gradle
-          
-          chmod +x gradlew
-          ./gradlew assembleDebug
+        run: gradle assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Mobile-App-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-
+          name: professorx-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
